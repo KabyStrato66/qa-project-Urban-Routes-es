@@ -1,7 +1,3 @@
-from dataclasses import field
-
-from cffi.cffi_opcode import CLASS_NAME
-
 import data
 import time
 from selenium import webdriver
@@ -45,10 +41,10 @@ class UrbanRoutesPage:
     to_field = (By.ID, 'to')
     request_taxi_button = (By.CSS_SELECTOR, ".button.round")
     comfort_rate_icon = (By.XPATH, "/html/body/div/div/div[3]/div[3]/div[2]/div[1]/div[5]/div[1]/img")
-    phone_number_button = (By.XPATH, "/html/body/div/div/div[3]/div[3]/div[2]/div[2]/div[1]/div")
+    phone_number_button = (By.CLASS_NAME, "np-button")
     phone_number_field = (By.XPATH, "/html/body/div/div/div[1]/div[2]/div[1]/form/div[1]/div[1]/input")
     close_button_phone = (By.XPATH, "/html/body/div/div/div[1]/div[2]/div[1]/button")
-    method_payment_button = (By.XPATH, "/html/body/div/div/div[3]/div[3]/div[2]/div[2]/div[2]/div[1]")
+    method_payment_button = (By.CLASS_NAME, "pp-text")
     add_card_button = (By.XPATH, "/html/body/div/div/div[2]/div[2]/div[1]/div[2]/div[3]/div[2]")
     card_field = (By.XPATH, "/html/body/div/div/div[2]/div[2]/div[2]/form/div[1]/div[1]/div[2]/input")
     card_code_field = (By.XPATH, "/html/body/div/div/div[2]/div[2]/div[2]/form/div[1]/div[2]/div[2]/div[2]/input")
@@ -57,8 +53,9 @@ class UrbanRoutesPage:
     message_field = (By.XPATH, "/html/body/div/div/div[3]/div[3]/div[2]/div[2]/div[3]/div/input")
     slider_blanket = (By.XPATH, "/html/body/div/div/div[3]/div[3]/div[2]/div[2]/div[4]/div[2]/div[1]/div/div[2]/div/span")
     ice_cream_count = (By.XPATH, "/html/body/div/div/div[3]/div[3]/div[2]/div[2]/div[4]/div[2]/div[3]/div/div[2]/div[1]/div/div[2]/div/div[3]")
+    ice_cream_counter = (By.XPATH, "/html/body/div/div/div[3]/div[3]/div[2]/div[2]/div[4]/div[2]/div[3]/div/div[2]/div[1]/div/div[2]/div/div[2]")
     order_taxi_button = (By.XPATH, "/html/body/div/div/div[3]/div[4]/button/span[1]")
-
+    wait_window = (By.CLASS_NAME, "order-header-content")
 
     def __init__(self, driver):
         self.driver = driver
@@ -102,7 +99,7 @@ class UrbanRoutesPage:
 
 
 
-    #numero de telefono
+    #ingresar numero de telefono
     def get_phone_number_button(self):
             return WebDriverWait(self.driver, 5).until(
                 EC.element_to_be_clickable(self.phone_number_button)
@@ -192,6 +189,9 @@ class UrbanRoutesPage:
     def click_on_close_method_payment(self):
         self.get_close_method_payment().click()
 
+
+
+    # escribir mensaje al conductor
     def get_message_field(self):
         return WebDriverWait(self.driver,5).until(
             EC.element_to_be_clickable(self.message_field)
@@ -217,6 +217,8 @@ class UrbanRoutesPage:
             EC.element_to_be_clickable(self.slider_blanket)
         )
 
+
+    #pedir 2 helados
     def get_ice_cream_count(self):
         return WebDriverWait(self.driver,5).until(
             EC.element_to_be_clickable(self.ice_cream_count)
@@ -224,6 +226,11 @@ class UrbanRoutesPage:
 
     def click_on_ice_cream_count(self):
         self.get_ice_cream_count().click()
+
+    def get_ice_cream_counter(self):
+        return WebDriverWait(self.driver,5).until(
+            EC.presence_of_element_located(self.ice_cream_counter)
+        )
 
     def set_ice_cream_count(self):
         WebDriverWait(self.driver,5).until(
@@ -238,10 +245,22 @@ class UrbanRoutesPage:
     def click_on_order_taxi_button(self):
         self.get_order_taxi_button().click()
 
+
     def set_order_taxi(self):
         WebDriverWait(self.driver,5).until(
             EC.element_to_be_clickable(self.order_taxi_button)
         )
+
+    def get_wait_window(self):
+        return WebDriverWait(self.driver,5).until(
+            EC.presence_of_element_located(self.wait_window)
+        )
+
+    def click_on_button_and_wait(self):
+        # Método para hacer clic en el botón que muestra la ventana de espera
+        self.driver.find_element(By.CLASS_NAME, "order-header-content").click()  # Reemplaza con el ID correcto del botón
+        self.get_wait_window()  # Espera la ventana de espera
+
 class TestUrbanRoutes:
 
     driver = None
@@ -299,10 +318,13 @@ class TestUrbanRoutes:
         routes_page = UrbanRoutesPage(self.driver)
         routes_page.set_message()
 
+        assert routes_page.get_message() == data.message_for_driver
+
     def test_slider_blanket(self):
         routes_page = UrbanRoutesPage(self.driver)
         routes_page.set_slider_blanket()
         routes_page.click_on_slider_blanket()
+
 
     def test_ice_cream_count(self):
         routes_page = UrbanRoutesPage(self.driver)
@@ -310,14 +332,20 @@ class TestUrbanRoutes:
         routes_page.click_on_ice_cream_count()
         routes_page.click_on_ice_cream_count()
 
+        assert routes_page.get_ice_cream_counter().text in "2"
+
+
     def test_order_taxi(self):
         routes_page = UrbanRoutesPage(self.driver)
         routes_page.set_order_taxi()
         routes_page.click_on_order_taxi_button()
+        routes_page.click_on_button_and_wait()
 
+        wait_window = routes_page.get_wait_window()
+        assert wait_window.is_displayed()
 
 
     @classmethod
     def teardown_class(cls):
-        time.sleep(120)
+        time.sleep(30)
         cls.driver.quit()
